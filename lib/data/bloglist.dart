@@ -1,6 +1,12 @@
+
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
+
+
+part 'bloglist.g.dart';
 
 class BlogList {
   final List<Blog> blogs;
@@ -47,10 +53,15 @@ class BlogList {
   int get hashCode => blogs.hashCode;
 }
 
+@HiveType(typeId: 0)
 class Blog {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String image_url;
+  @HiveField(2)
   final String title;
+  @HiveField(3)
   final bool isFavourite;
 
   Blog({

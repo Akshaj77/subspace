@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
+import 'package:hive/hive.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:meta/meta.dart';
 import 'package:subspace/constants/constant.dart';
 import 'package:subspace/data/bloglist.dart';
@@ -11,9 +13,10 @@ part 'bloglist_state.dart';
 
 class BloglistBloc extends Bloc<BloglistEvent, BloglistState> {
   final Dio dio;
+  final Box<Blog> blogBox;
   
-  BloglistBloc({required this.dio}) : super(BloglistInitial()) {
-    print("created");
+  BloglistBloc({required this.dio,required this.blogBox}) : super(BloglistInitial()) {
+    
     on<GetBlogEvent>(_onGetBlogEvent);
     on<MarkFavouriteEvent>(_onMarkFavouriteEvent);
 
@@ -24,8 +27,13 @@ class BloglistBloc extends Bloc<BloglistEvent, BloglistState> {
   Future<void> _onGetBlogEvent(GetBlogEvent event, Emitter<BloglistState> emit) async {
     emit(BloglistLoading());
     try{
-      print(" triggered ");
-      final data = await dio.get(
+      if(blogBox.isNotEmpty) {
+        final blogs = blogBox.values.toList();
+        emit(BloglistLoaded(blogs));
+      }
+      else 
+      {
+          final data = await dio.get(
         BasicApiConstants().baseUrl,
         options: Options(
           headers: {
@@ -34,10 +42,14 @@ class BloglistBloc extends Bloc<BloglistEvent, BloglistState> {
         )
         
       );
-      print(data);
+  
 
       List<Blog> blogList = (data.data["blogs"] as List).map((e) => Blog.fromMap(e)).toList();
+      await blogBox.clear(); // Clear the existing entries if needed
+      await blogBox.addAll(blogList);
       emit(BloglistLoaded(blogList));
+      }
+      
     }
     catch(e)
     {
@@ -50,11 +62,13 @@ class BloglistBloc extends Bloc<BloglistEvent, BloglistState> {
       final currentState = state as BloglistLoaded;
       final updatedBlogs = currentState.blogs.map((blog) {
         if (blog.id == event.blogId) {
-          return blog.copyWith(isFavourite: !blog.isFavourite); // Toggle favorite status
+          return blog.copyWith(isFavourite: !blog.isFavourite); 
         }
         return blog;
       }).toList();
       emit(BloglistLoaded(updatedBlogs));
     }
   }
+  
+ 
 }
